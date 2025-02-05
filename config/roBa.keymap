@@ -81,7 +81,7 @@
 &trans  &trans  &trans  &trans  &trans                       &kp F   &kp W  &kp R  &kp Y  &kp P
 &trans  &trans  &trans  &trans  &trans  &trans      &kp F13  &kp K   &kp T  &kp N  &kp S  &kp H
 &trans  &trans  &trans  &trans  &trans  &trans      &trans   &kp G   &kp D  &kp M  &kp J  &kp B
-&trans  &trans  &trans  &trans  &trans  &trans      &trans   &trans                       &kp F12
+&trans  &trans  &trans  &trans  &trans  &trans      &trans   &trans                       &kp SLASH
             >;
         };
 
