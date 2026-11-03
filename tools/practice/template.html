@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>roBa 練習</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* layout: 上にタブ、中央に「いま押すもの」を大きく、その下にヒントのキーボード図 */
+:root {
+  --bg: #eef0f3; --panel: #ffffff; --fg: #1d2230; --muted: #5d6576; --line: #d3d8e0;
+  --cap: #f7f8fa; --cap-edge: #c3c9d3; --dim: #a3aab7; --ball: #dde1e8;
+  --accent: #2f6fb3; --accent-soft: #d6e6f8; --target: #d1495b; --target-soft: #fbe0e3;
+  --shift: #b07d10; --shift-soft: #f6ead0; --ok: #2d8a5a; --ok-soft: #d9f0e3; --warn: #b5541c;
+  --font: "Zen Kaku Gothic New", "Yu Gothic", "Hiragino Sans", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #14171d; --panel: #1c2028; --fg: #e8ebf1; --muted: #9aa2b1; --line: #2e3440;
+  --cap: #262b35; --cap-edge: #3b4251; --dim: #636b7a; --ball: #2a303b;
+  --accent: #6fa8e8; --accent-soft: #22385a; --target: #ef7a8a; --target-soft: #4a2229;
+  --shift: #e0b04a; --shift-soft: #3e3218; --ok: #5ec28b; --ok-soft: #1c3a2a; --warn: #ec8a55;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #14171d; --panel: #1c2028; --fg: #e8ebf1; --muted: #9aa2b1; --line: #2e3440;
+  --cap: #262b35; --cap-edge: #3b4251; --dim: #636b7a; --ball: #2a303b;
+  --accent: #6fa8e8; --accent-soft: #22385a; --target: #ef7a8a; --target-soft: #4a2229;
+  --shift: #e0b04a; --shift-soft: #3e3218; --ok: #5ec28b; --ok-soft: #1c3a2a; --warn: #ec8a55;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.7; }
+.wrap { max-width: 980px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 60px; display: grid; gap: 20px; }
+header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+h1 { font-size: 24px; font-weight: 900; margin: 0; letter-spacing: .02em; }
+h2 { font-size: 20px; font-weight: 900; margin: 0; text-wrap: balance; }
+h3 { font-size: 16px; font-weight: 700; margin: 0; }
+p { margin: 0; max-width: 68ch; }
+nav.tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+nav.tabs button { border: 0; background: transparent; color: var(--fg); font: inherit; font-size: 14px; padding: 4px 14px; border-radius: 999px; cursor: pointer; }
+nav.tabs button[aria-current="page"] { background: var(--accent); color: var(--panel); font-weight: 700; }
+.streak { margin-left: auto; font-size: 13px; color: var(--muted); font-family: var(--mono); }
+button.primary, button.ghost { font: inherit; font-weight: 700; border-radius: 10px; cursor: pointer; padding: 8px 18px; }
+button.primary { background: var(--accent); color: var(--panel); border: 1px solid var(--accent); }
+button.ghost { background: var(--panel); color: var(--fg); border: 1px solid var(--line); font-weight: 400; }
+button:focus-visible, .choice:focus-visible, .skill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 12px; min-width: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.plan { display: grid; gap: 8px; }
+.plan-row { display: flex; align-items: center; gap: 12px; }
+.plan-row .meter { flex: 0 0 120px; }
+.meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.meter > i { display: block; height: 100%; background: var(--ok); }
+.skills { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.skill { text-align: left; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; cursor: pointer; }
+.skill:hover { border-color: var(--accent); }
+.skill .due { font-size: 12px; color: var(--warn); }
+.skill .ok { font-size: 12px; color: var(--ok); }
+/* セッション */
+.session { display: grid; gap: 14px; }
+.progress { display: flex; gap: 4px; flex-wrap: wrap; }
+.progress i { width: 18px; height: 6px; border-radius: 3px; background: var(--line); }
+.progress i.done { background: var(--ok); }
+.progress i.miss { background: var(--shift); }
+.progress i.now { background: var(--accent); }
+.prompt { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: grid; gap: 8px; justify-items: center; text-align: center; transition: background .15s; }
+.prompt.good { background: var(--ok-soft); }
+.prompt.bad { background: var(--target-soft); }
+.prompt .what { font-size: 13px; color: var(--muted); }
+.prompt .big { font-size: clamp(40px, 9vw, 72px); font-weight: 900; line-height: 1.1; font-family: var(--mono); word-break: break-all; }
+.prompt .big.jp { font-family: var(--font); font-size: clamp(28px, 6vw, 44px); }
+.prompt .typed { font-family: var(--mono); font-size: 22px; letter-spacing: .1em; }
+.prompt .typed b { color: var(--ok); }
+.hint { font-size: 15px; font-weight: 700; color: var(--accent); min-height: 1.7em; }
+.warn { color: var(--warn); font-weight: 700; font-size: 14px; min-height: 1.5em; }
+.board { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 10px; overflow-x: auto; }
+.board svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.board.hidden-hint svg { opacity: .35; }
+svg text { font-family: var(--font); }
+.cap { fill: var(--cap); stroke: var(--cap-edge); stroke-width: 2; }
+.cap.target { fill: var(--target-soft); stroke: var(--target); stroke-width: 5; }
+.cap.trigger { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 5; }
+.cap.shift { fill: var(--shift-soft); stroke: var(--shift); stroke-width: 5; }
+.t-main { fill: var(--fg); font-weight: 700; }
+.t-dim { fill: var(--dim); font-weight: 400; }
+.t-sub { fill: var(--muted); }
+.ball { fill: var(--ball); stroke: var(--cap-edge); stroke-width: 2; }
+.ball.target { fill: var(--target-soft); stroke: var(--target); stroke-width: 5; }
+.ball-t { fill: var(--muted); font-size: 18px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--muted); }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; border: 2px solid; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* マウス練習エリア */
+.arena { position: relative; height: 300px; background: var(--panel); border: 1px dashed var(--cap-edge); border-radius: 16px; overflow: hidden; user-select: none; touch-action: none; }
+.dot { position: absolute; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: var(--panel); cursor: pointer; }
+.dot.l { background: var(--accent); } .dot.m { background: var(--ok); } .dot.r { background: var(--target); }
+.block { position: absolute; width: 56px; height: 56px; border-radius: 10px; background: var(--accent); cursor: grab; display: grid; place-items: center; color: var(--panel); font-weight: 700; font-size: 12px; }
+.slot { position: absolute; width: 72px; height: 72px; border-radius: 12px; border: 3px dashed var(--ok); }
+.scroller { height: 300px; overflow-y: scroll; background: var(--panel); border: 1px dashed var(--cap-edge); border-radius: 16px; position: relative; overscroll-behavior: contain; }
+.scroller .lane { position: relative; height: 3000px; }
+.scroller .flag { position: absolute; left: 50%; transform: translateX(-50%); padding: 6px 14px; border-radius: 999px; background: var(--target); color: var(--panel); font-weight: 700; }
+.scroller .zone { position: sticky; top: 120px; height: 60px; border-top: 2px solid var(--ok); border-bottom: 2px solid var(--ok); pointer-events: none; z-index: 1; }
+.imebox { width: 100%; font: inherit; font-size: 22px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--cap); color: var(--fg); }
+.choices { display: grid; gap: 8px; width: 100%; max-width: 560px; }
+.choice { text-align: left; font: inherit; color: var(--fg); background: var(--cap); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; cursor: pointer; }
+.choice.right { background: var(--ok-soft); border-color: var(--ok); }
+.choice.wrong { background: var(--target-soft); border-color: var(--target); }
+/* ガイド */
+.guide { display: grid; gap: 14px; }
+.guide ol { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 6px; }
+.guide li label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.guide li input { margin-top: 6px; accent-color: var(--ok); }
+.guide li.done span { color: var(--muted); text-decoration: line-through; }
+code { font-family: var(--mono); font-size: .88em; background: var(--cap); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; word-break: break-all; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; color: var(--muted); letter-spacing: .05em; }
+.tbl { overflow-x: auto; }
+.layerchip { font-family: var(--mono); font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .prompt { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>roBa 練習</h1>
+    <nav class="tabs" aria-label="画面">
+      <button id="tab-today" data-view="today">今日の練習</button>
+      <button id="tab-skills" data-view="skills">スキル一覧</button>
+      <button id="tab-howto" data-view="howto">使い方ガイド</button>
+    </nav>
+    <span class="streak" id="streak"></span>
+  </header>
+  <main id="view"></main>
+</div>
+
+<script>
+const DATA = /*__ROBA_DATA__*/null;
+
+/* ------------------------------------------------------------------ */
+/* 保存（このブラウザの中だけ）                                          */
+/* ------------------------------------------------------------------ */
+const STORE_KEY = "roba-practice-v1";
+function today() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function addDays(day, n) { const d = new Date(day + "T00:00:00"); d.setDate(d.getDate() + n); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.skills) return s; } catch (e) {}
+  return { skills: {}, items: {}, days: [], guide: {} };
+}
+let ST = load();
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(ST)); } catch (e) {} }
+function skillState(id) { return ST.skills[id] || (ST.skills[id] = { score: 0, interval: 0, due: today(), runs: 0 }); }
+
+/* ------------------------------------------------------------------ */
+/* キーボード図                                                          */
+/* ------------------------------------------------------------------ */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function fontSize(s) { const n = [...s].length; return n <= 1 ? 34 : n <= 3 ? 28 : n <= 4 ? 22 : n <= 6 ? 17 : 14; }
+function keyboard(layer, marks, ballTarget) {
+  const L = DATA.layers[layer] || DATA.layers[0];
+  const [bx, by, br] = DATA.ball;
+  let s = `<svg viewBox="-8 -8 ${DATA.W + 16} ${DATA.H + 4}" role="img" aria-label="${esc(L.ja)}レイヤーのキー配置">`;
+  s += `<circle class="ball${ballTarget ? " target" : ""}" cx="${bx}" cy="${by}" r="${br}"/><text class="ball-t" x="${bx}" y="${by + 6}" text-anchor="middle">ボール</text>`;
+  DATA.geo.forEach(([x, y, rot, rx, ry], p) => {
+    const k = L.keys[p];
+    const cls = marks[p] ? " " + marks[p] : "";
+    let inner = `<rect class="cap${cls}" x="4" y="4" width="92" height="92" rx="12"/>`;
+    if (k.m) inner += `<text class="${k.i ? "t-dim" : "t-main"}" x="50" y="${k.s ? 46 : 58}" font-size="${fontSize(k.m)}" text-anchor="middle">${esc(k.m)}</text>`;
+    if (k.s) inner += `<text class="t-sub" x="50" y="78" font-size="12" text-anchor="middle">${esc(k.s)}</text>`;
+    const tf = rot ? ` transform="rotate(${rot} ${rx} ${ry})"` : "";
+    s += `<g${tf}><g transform="translate(${x} ${y})">${inner}</g></g>`;
+  });
+  return s + "</svg>";
+}
+const keyName = (p, layer = 0) => (DATA.layers[layer].keys[p] || {}).m || "?";
+
+/* 文字の押し方 → {layer, marks, text} */
+function routeHint(ch) {
+  const rs = DATA.routes[ch];
+  if (!rs || !rs.length) return null;
+  // 記号レイヤーより「Shift＋基本のキー」を優先しない（記号は記号レイヤーで覚える）
+  const r = rs.find(r => !r.sh && r.l !== 0) || rs[0];
+  const marks = { [r.p]: "target" };
+  let text;
+  if (r.l === 0 && !r.sh) text = `${keyName(r.p)} を押す`;
+  else if (r.l === 0 && r.sh) { marks[DATA.pos.shift] = "shift"; text = `${keyName(DATA.pos.shift)} を長押し ＋ ${keyName(r.p)}`; }
+  else { DATA.layers[r.l].trig.forEach(t => marks[t] = "trigger"); text = `${DATA.layers[r.l].how} ${keyName(r.p, 0)} の位置`; }
+  const alt = rs.find(x => x !== r && x.l === 0 && x.sh);
+  if (alt && r.l !== 0) text += `（${keyName(DATA.pos.shift)}長押し＋${keyName(alt.p)} でも出ます）`;
+  return { layer: r.l, marks, text };
+}
+
+/* ------------------------------------------------------------------ */
+/* スキルと問題                                                          */
+/* ------------------------------------------------------------------ */
+const P = DATA.pos;
+const letterPos = c => (DATA.routes[c] || [{}])[0].p;
+const pick = (arr, n) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, n); };
+/* よく間違えるものを多めに出す */
+function weighted(arr, n, keyFn) {
+  const w = arr.map(x => { const st = ST.items[keyFn(x)]; return 1 + (st ? st.miss * 2 + (st.slow || 0) : 1.5); });
+  const out = [], pool = arr.slice(), ww = w.slice();
+  while (out.length < n && pool.length) {
+    let r = Math.random() * ww.reduce((a, b) => a + b, 0), i = 0;
+    while ((r -= ww[i]) > 0) i++;
+    out.push(pool[i]); pool.splice(i, 1); ww.splice(i, 1);
+  }
+  return out;
+}
+
+function charItem(ch, what) {
+  const h = routeHint(ch);
+  return { kind: "key", id: "c:" + ch, what: what || "この文字を打つ", show: ch, layer: h ? h.layer : 0, marks: h ? h.marks : {}, hint: h ? h.text : "",
+    check: e => (e.ctrlKey || e.altKey) ? null : (e.key === ch ? "ok" : (e.key.length === 1 ? "bad" : null)) };
+}
+function comboItem(id, label, mods, code, hintText, marks, keyLabel) {
+  return { kind: "key", id: "s:" + id, what: "このショートカットを押す", show: label, jp: true, layer: 0, marks, hint: hintText,
+    check: e => {
+      if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return null;
+      const want = e.ctrlKey === !!mods.ctrl && e.shiftKey === !!mods.shift && !e.altKey;
+      if (e.code === code && want) return "ok";
+      return (e.ctrlKey || e.key.length === 1) ? "bad" : null;
+    } };
+}
+
+const SKILLS = [
+  { id: "shortcut", title: "Ctrl のショートカット", desc: "コピー・貼り付け・元に戻す", make: () => {
+      const C = P.ctrl, R = P.ctrl_r, SH = P.shift;
+      const m = (...ps) => Object.fromEntries(ps);
+      const list = [
+        ["c", "Ctrl+C コピー", {}, "KeyC", C], ["v", "Ctrl+V 貼り付け", {}, "KeyV", C], ["x", "Ctrl+X 切り取り", {}, "KeyX", C],
+        ["s", "Ctrl+S 保存", {}, "KeyS", C], ["f", "Ctrl+F 検索", {}, "KeyF", C],
+        ["z", "Ctrl+Z 元に戻す", {}, "KeyZ", R], ["a", "Ctrl+A 全部選択", {}, "KeyA", R],
+        ["Z", "Ctrl+Shift+Z やり直し", { shift: true }, "KeyZ", R],
+      ];
+      return weighted(list, 6, x => "s:" + x[1]).map(([ch, label, mods, code, ctrlPos]) => {
+        const marks = { [ctrlPos]: "trigger", [letterPos(ch.toLowerCase())]: "target" };
+        if (mods.shift) marks[SH] = "shift";
+        const ctrlWord = ctrlPos === R ? `右下の ${keyName(R)} を長押し（Ctrl）` : `左下の ${keyName(C)}`;
+        const text = `${ctrlWord} ＋ ${mods.shift ? keyName(SH) + "長押し ＋ " : ""}${ch.toUpperCase()}`;
+        return comboItem(label, label, { ctrl: true, shift: !!mods.shift }, code, text, marks);
+      });
+    } },
+  { id: "shift", title: "Shift と大文字", desc: "英数を長押しして Shift", make: () => {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+      const syms = Object.keys(DATA.routes).filter(c => DATA.routes[c].some(r => r.l === 0 && r.sh) && !/[A-Z]/.test(c));
+      return [...pick(letters, 4), ...pick(syms, 2)].map(c => { const it = charItem(c); const r = DATA.routes[c].find(r => r.l === 0 && r.sh);
+        it.marks = { [r.p]: "target", [P.shift]: "shift" }; it.layer = 0; it.hint = `${keyName(P.shift)} を長押し ＋ ${keyName(r.p)}`; return it; });
+    } },
+  { id: "symbol", title: "記号", desc: "Enter を押さえて記号", make: () => {
+      const syms = Object.keys(DATA.routes).filter(c => DATA.routes[c].some(r => r.l === DATA.li.symbol));
+      return weighted(syms, 8, c => "c:" + c).map(c => charItem(c));
+    } },
+  { id: "number", title: "数字", desc: "Space を押さえて上の段", make: () => {
+      const nums = ["2026", "15", "3.14", "404", "1080", "0.5", "7", "128", "60", "9"];
+      return pick(nums, 5).map(seqItem);
+    } },
+  { id: "fkey", title: "F キー", desc: "数字の真下", make: () => {
+      const ks = Object.keys(DATA.fkeys).filter(k => !["F11", "F12"].includes(k));
+      return weighted(ks, 5, k => "f:" + k).map(k => {
+        const p = DATA.fkeys[k], marks = { [p]: "target" }; DATA.layers[DATA.li.number].trig.forEach(t => marks[t] = "trigger");
+        return { kind: "key", id: "f:" + k, what: "このキーを押す", show: k, layer: DATA.li.number, marks,
+          hint: `${DATA.layers[DATA.li.number].how} ${keyName(p, 0)} の位置（${k.replace("F", "")} の真下）`,
+          check: e => e.key === k ? "ok" : (e.key.length === 1 || /^F\d+$/.test(e.key) ? "bad" : null) };
+      });
+    } },
+  { id: "nav", title: "矢印と移動", desc: "BS を押さえて左手", make: () => {
+      const names = { ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→", Home: "Home", End: "End", PageUp: "PgUp", PageDown: "PgDn", Delete: "Del",
+        "Ctrl+Shift+ArrowLeft": "単語を選択 ←", "Ctrl+Shift+ArrowRight": "単語を選択 →" };
+      const ks = Object.keys(DATA.nav).filter(k => names[k]);
+      return weighted(ks, 7, k => "n:" + k).map(k => {
+        const p = DATA.nav[k], marks = { [p]: "target" }; DATA.layers[DATA.li.nav].trig.forEach(t => marks[t] = "trigger");
+        const combo = k.startsWith("Ctrl+Shift+"), key = combo ? k.replace("Ctrl+Shift+", "") : k;
+        return { kind: "key", id: "n:" + k, what: "このキーを押す", show: names[k], jp: true, layer: DATA.li.nav, marks,
+          hint: `${DATA.layers[DATA.li.nav].how} ${keyName(p, 0)} の位置`,
+          check: e => (e.key === key && e.ctrlKey === combo && e.shiftKey === combo) ? "ok" : (e.key.length === 1 || /^(Arrow|Home|End|Page|Delete)/.test(e.key) ? "bad" : null) };
+      });
+    } },
+  { id: "ime", title: "英数とかな", desc: "IME のオン・オフ", make: () => [imeItem("kana"), imeItem("eisu")] },
+  { id: "click", title: "クリック", desc: "ボールを動かして J K L", make: () => pick(["l", "l", "m", "r", "r", "l"], 6).map(clickItem) },
+  { id: "scroll", title: "スクロール", desc: "かな を押さえてボール", make: () => [scrollItem(), scrollItem()] },
+  { id: "drag", title: "ドラッグ", desc: "J を押したままボール", make: () => [dragItem(), dragItem()] },
+  { id: "precise", title: "小さい的", desc: "; を押さえるとゆっくり", make: () => [preciseItem(10), preciseItem(8), preciseItem(6)] },
+  { id: "quiz", title: "設定のクイズ", desc: "変え方・困ったとき", make: () => pick(QUIZ, 3).map(quizItem) },
+];
+const SKILL = Object.fromEntries(SKILLS.map(s => [s.id, s]));
+
+function seqItem(str) {
+  const it = { kind: "seq", id: "q:" + str, what: "この数字を打つ（Space を押さえたまま）", show: str, seq: str, pos: 0, layer: DATA.li.number, marks: {}, hint: "" };
+  it.update = () => {
+    const ch = it.seq[it.pos]; const h = routeHint(ch);
+    it.marks = h ? h.marks : {}; it.layer = h ? h.layer : 0;
+    it.hint = h ? h.text + (ch === "." ? "（. は Space を離して）" : "") : "";
+  };
+  it.update();
+  it.check = e => {
+    if (e.ctrlKey || e.altKey || e.key.length !== 1) return null;
+    if (e.key === it.seq[it.pos]) { it.pos++; if (it.pos >= it.seq.length) return "ok"; it.update(); return "progress"; }
+    return "bad";
+  };
+  return it;
+}
+
+function imeItem(mode) {
+  const kana = mode === "kana";
+  const p = kana ? P.kana : P.shift;
+  return { kind: "ime", id: "i:" + mode, what: kana ? "かな を押してから「ねこ」と打って Enter" : "英数 を押してから cat と打つ", show: kana ? "ねこ" : "cat", jp: kana,
+    layer: 0, marks: { [p]: "target" }, hint: kana ? `${keyName(p)} を1回押す（日本語入力になる）→ n e k o → Enter` : `${keyName(p)} を1回押す（英字になる）→ c a t`,
+    check: v => kana ? (v.includes("ねこ") || v.includes("猫") ? "ok" : null) : (/cat$/i.test(v) ? "ok" : null) };
+}
+
+const QUIZ = [
+  { q: "1つのキーだけ入れ替えたい。いちばん手軽なのは？", a: "右手をUSBでつないで ZMK Studio で変える", w: ["Windows の設定を変える", "左右に settings_reset を書く", "オーバーレイアプリで変える"] },
+  { q: "カーソルの速さを変える設定はどこ？", a: "roBa_R.conf の CONFIG_PMW3610_CPI", w: ["roBa.keymap の Ctrl の行", "Windows のマウス設定だけ", "west.yml"] },
+  { q: "キー配置を変えたあと、書き込むのはどっち？", a: "右手（roBa_R）だけでよい", w: ["左手だけ", "必ず左右とも", "書き込みは不要"] },
+  { q: "左右がつながらなくなった。最初に試すのは？", a: "左右に settings_reset を書いてから書き直す", w: ["Windows を再インストール", "ZMK を最新の main にする", "トラックボールを外す"] },
+  { q: "Bluetooth の接続先を切り替えるには？", a: "Space と Enter を両方長押し → Y〜P", w: ["BS を長押し → Y", "かな を3回押す", "Ctrl+Alt+B"] },
+  { q: "スクロールし続けたい（固定したい）ときは？", a: "BS を押さえて Tab の位置", w: ["J と K を同時押し", "かな を2回押す", "Esc を長押し"] },
+  { q: "Ctrl+Z（元に戻す）を押しやすくするには？", a: "右下の Del を長押しして Z", w: ["左下の Ctrl ＋ Z を同じ小指で", "Enter を押さえて Z", "英数を押さえて Z"] },
+  { q: "書き込みモード（XIAO-SENSE ドライブ）にするには？", a: "XIAO のリセットボタンを素早く2回押す", w: ["電源スイッチを3回切り替える", "Esc を10秒押す", "USB を抜き差しするだけ"] },
+  { q: "記号の ( を出すには？", a: "Enter を押さえて I", w: ["Space を押さえて I", "BS を押さえて I", "英数を長押しして 8"] },
+  { q: "キーマップを書き換えたファイルからファームを作るには？", a: "GitHub に push すると Actions がビルドする", w: ["Windows に ZMK をインストールする", "ZMK Studio で保存する", "オーバーレイで Ctrl+Alt+Shift+L"] },
+];
+function quizItem(q) {
+  return { kind: "quiz", id: "z:" + q.q, what: "クイズ", show: q.q, jp: true, choices: pick([q.a, ...q.w], 4), answer: q.a, layer: 0, marks: {}, hint: "" };
+}
+
+function clickItem(btn) {
+  const label = { l: "左クリック", m: "中クリック", r: "右クリック" }[btn], code = { l: 0, m: 1, r: 2 }[btn];
+  const p = { l: P.lclk, m: P.mclk, r: P.rclk }[btn];
+  return { kind: "click", id: "k:" + btn, what: "丸を" + label, show: label, jp: true, btn, code, layer: DATA.li.mouse, marks: { [p]: "target" }, ballTarget: true,
+    hint: `ボールで丸に合わせて ${keyName(p, 0)} の位置（${label}）` };
+}
+function scrollItem() {
+  return { kind: "scroll", id: "w:scroll", what: "赤い旗を緑の枠まで動かす", show: "スクロール", jp: true, layer: DATA.li.scroll ?? 0,
+    marks: { [P.kana]: "trigger" }, ballTarget: true, hint: `${keyName(P.kana)} を押さえたままボールを転がす（ずっと続けるなら BS を押さえて ${keyName(P.scroll_lock, 0)} で固定）` };
+}
+function dragItem() {
+  return { kind: "drag", id: "d:drag", what: "青い四角を緑の枠に入れる", show: "ドラッグ", jp: true, layer: DATA.li.mouse, marks: { [P.lclk]: "target" }, ballTarget: true,
+    hint: `ボールで四角に合わせ、${keyName(P.lclk, 0)} を押したままボールを転がす` };
+}
+function preciseItem(size) {
+  return { kind: "click", id: "p:" + size, what: "小さい点を左クリック", show: "精密", jp: true, btn: "l", code: 0, size, layer: DATA.li.mouse,
+    marks: { [P.snipe]: "trigger", [P.lclk]: "target" }, ballTarget: true, hint: `${keyName(P.snipe, 0)} を押さえるとカーソルがゆっくり → ${keyName(P.lclk, 0)} でクリック` };
+}
+
+/* ------------------------------------------------------------------ */
+/* 今日の練習を選ぶ                                                       */
+/* ------------------------------------------------------------------ */
+function todaysPlan() {
+  const t = today();
+  const st = SKILLS.map((s, i) => ({ s, i, ss: skillState(s.id) }));
+  let due = st.filter(x => x.ss.due <= t).sort((a, b) => (a.ss.score - b.ss.score) || (a.i - b.i));
+  if (due.length < 2) due = due.concat(st.filter(x => !due.includes(x)).sort((a, b) => a.ss.score - b.ss.score).slice(0, 2 - due.length));
+  return due.slice(0, 4).map(x => x.s);
+}
+
+/* ------------------------------------------------------------------ */
+/* 画面                                                                  */
+/* ------------------------------------------------------------------ */
+const VIEW = document.getElementById("view");
+let session = null;
+
+function setTab(name) {
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.view === name ? "page" : "false"));
+}
+function streakText() {
+  const days = ST.days || [];
+  let n = 0, d = today();
+  if (!days.includes(d)) d = addDays(d, -1);
+  while (days.includes(d)) { n++; d = addDays(d, -1); }
+  return days.length ? `連続 ${n} 日 ・ 累計 ${days.length} 日` : "";
+}
+function refreshStreak() { document.getElementById("streak").textContent = streakText(); }
+
+function meterHTML(v) { return `<div class="meter" aria-hidden="true"><i style="width:${Math.round(v)}%"></i></div>`; }
+
+function showToday() {
+  stopSession(); setTab("today");
+  const plan = todaysPlan(), doneToday = (ST.days || []).includes(today());
+  VIEW.innerHTML = `<div class="card">
+      <h2>${doneToday ? "今日の分は終わりました" : "今日の練習（5分くらい）"}</h2>
+      <p class="muted">${doneToday ? "続けたいときは、もう一度やるか、スキル一覧から選んでください。" : "苦手なものと、しばらくやっていないものを選んでいます。最初にこのページを一度クリックしてから始めてください。"}</p>
+      <div class="plan">${plan.map(s => { const ss = skillState(s.id); return `<div class="plan-row"><span style="flex:1">${esc(s.title)} <span class="muted small">— ${esc(s.desc)}</span></span>${meterHTML(ss.score)}</div>`; }).join("")}</div>
+      <div class="row"><button class="primary" id="start">${doneToday ? "もう一度やる" : "始める"}</button></div>
+    </div>`;
+  document.getElementById("start").onclick = () => startSession(plan.map(s => s.id));
+}
+
+function showSkills() {
+  stopSession(); setTab("skills");
+  const t = today();
+  VIEW.innerHTML = `<div class="card"><h2>スキル一覧</h2><p class="muted">押すとそのスキルだけ練習します。バーは習熟度、印は次にやる日です。</p>
+    <div class="skills">${SKILLS.map(s => { const ss = skillState(s.id); const due = ss.due <= t;
+      return `<button class="skill" data-id="${s.id}"><h3>${esc(s.title)}</h3><span class="muted small">${esc(s.desc)}</span>${meterHTML(ss.score)}
+      <span class="${due ? "due" : "ok"}">${ss.runs ? (due ? "今日やる" : "次は " + ss.due.slice(5).replace("-", "/")) : "まだやっていない"}</span></button>`; }).join("")}</div></div>`;
+  VIEW.querySelectorAll(".skill").forEach(b => b.onclick = () => startSession([b.dataset.id]));
+}
+
+/* ---- 使い方ガイド ---- */
+const GUIDE = [
+  { id: "studio", title: "1つのキーだけ変える（ZMK Studio・書き込み不要）", steps: [
+      "右手を USB ケーブルで PC につなぐ（Bluetooth ではなくケーブル）",
+      "Chrome か Edge で <code>https://zmk.studio</code> を開き、Web 版を開く",
+      "「Connect」を押して roBa を選ぶ",
+      "上のタブでレイヤー（Base / Symbol …）を選び、変えたいキーをクリック",
+      "下の一覧から新しいキーを選ぶ（例：Key Press → 文字）",
+      "右上の「Save」を押す。その場で反映され、書き込みは不要",
+      "元に戻したいときは「Restore Stock Settings」",
+      "注意：Studio で変えた内容はオーバーレイと練習アプリには出ない（どちらも roBa.keymap を読むため）" ] },
+  { id: "file", title: "まとめて変える（ファイルを直してビルド）", steps: [
+      "<code>config/roBa.keymap</code> をテキストエディタで開く（各レイヤーの <code>bindings</code> がキーの並び）",
+      "記号は <code>JP_</code> で始まる名前を使う（例：<code>&amp;kp JP_AT</code> で @）。一覧は <code>config/keys_jp.h</code>",
+      "GitHub の自分のリポジトリに push する",
+      "GitHub の「Actions」タブでビルドが緑になるのを待つ（5分ほど）",
+      "完了したビルドの「Artifacts」から <code>firmware.zip</code> をダウンロード",
+      "右手に <code>roBa_R</code> を書き込む（下の「書き込み方」）",
+      "オーバーレイは自動で新しい配置になる。練習アプリと配置図は <code>python tools/make_practice.py</code> と <code>python tools/make_keymap_sheet.py</code> で作り直す" ] },
+  { id: "flash", title: "書き込み方", steps: [
+      "書き込む側を USB で PC につなぐ",
+      "XIAO のリセットボタンを素早く2回押す → <code>XIAO-SENSE</code> というドライブが出る",
+      ".uf2 ファイルをそのドライブにコピー（右手は roBa_R、左手は roBa_L）",
+      "数秒で自動的に切断されたら完了。Mac ではエラー表示が出ても書けている",
+      "配置だけ変えたときは右手だけでよい" ] },
+  { id: "tune", title: "速さを変える", steps: [
+      "カーソルの速さ：<code>boards/shields/roBa/roBa_R.conf</code> の <code>CONFIG_PMW3610_CPI</code>（200刻み、大きいほど速い）",
+      "スクロールの速さ：<code>roBa.keymap</code> の <code>zip_scroll_scaler 1 16</code>（16 を大きくすると遅く）",
+      "スクロールの向きを逆に：<code>INPUT_TRANSFORM_Y_INVERT</code> の行を消す",
+      "精密モードの遅さ：<code>zip_xy_scaler 1 4</code>",
+      "マウスレイヤーが続く時間：<code>zip_temp_layer MOUSE 600</code>（ミリ秒）" ] },
+  { id: "trouble", title: "困ったとき", steps: [
+      "左右がつながらない → 左右に <code>settings_reset</code> を書いてから roBa_R / roBa_L を書き直し、Windows の Bluetooth から roBa を削除して再ペアリング",
+      "別の PC に切り替えたい → Space と Enter を両方長押しして Y〜P（BT1〜BT5）",
+      "記号が違う文字になる → Windows のキーボードが「日本語キーボード」になっているか確認",
+      "英数・かなが効かない → Microsoft IME か確認（Google 日本語入力ならそちらのキー設定で割り当て）",
+      "オーバーレイが出ない → <code>tools/overlay/roba_overlay.log</code> を見る" ] },
+];
+function showHowto() {
+  stopSession(); setTab("howto");
+  VIEW.innerHTML = `<div class="guide">${GUIDE.map(g => `<section class="card"><h2>${esc(g.title)}</h2><ol>${g.steps.map((s, i) => {
+      const key = g.id + ":" + i, done = !!ST.guide[key];
+      return `<li class="${done ? "done" : ""}"><label><input type="checkbox" id="g-${key.replace(":", "-")}" data-key="${key}" ${done ? "checked" : ""}><span>${s}</span></label></li>`; }).join("")}</ol></section>`).join("")}
+    <section class="card"><h2>レイヤーの入り方</h2><div class="tbl"><table><thead><tr><th>レイヤー</th><th>入り方</th></tr></thead><tbody>
+    ${DATA.layers.map(l => `<tr><td>${esc(l.ja)}</td><td>${esc(l.how || (l.name === "Base" ? "いつも" : l.name === "Mouse" ? "ボールを動かすと自動" : "—"))}</td></tr>`).join("")}
+    </tbody></table></div></section></div>`;
+  VIEW.querySelectorAll("input[type=checkbox]").forEach(c => c.onchange = () => {
+    ST.guide[c.dataset.key] = c.checked; save(); c.closest("li").classList.toggle("done", c.checked); });
+}
+
+/* ------------------------------------------------------------------ */
+/* セッション                                                            */
+/* ------------------------------------------------------------------ */
+function startSession(ids) {
+  stopSession();
+  const queue = ids.map(id => ({ skill: SKILL[id], items: SKILL[id].make(), results: [] }));
+  session = { queue, si: 0, ii: 0, t0: 0, miss: false, layerSeen: null };
+  window.addEventListener("keydown", onKey, true);
+  window.addEventListener("contextmenu", onContext, true);
+  renderItem();
+}
+function stopSession() {
+  window.removeEventListener("keydown", onKey, true);
+  window.removeEventListener("contextmenu", onContext, true);
+  session = null;
+}
+function onContext(e) { if (session && session.cur && (session.cur.kind === "click" || session.cur.kind === "drag")) e.preventDefault(); }
+
+const curGroup = () => session.queue[session.si];
+function renderItem() {
+  const g = curGroup(), it = g.items[session.ii];
+  session.cur = it; session.t0 = performance.now(); session.miss = false;
+  const dots = g.items.map((x, i) => `<i class="${i < session.ii ? (g.results[i] && g.results[i].miss ? "miss" : "done") : i === session.ii ? "now" : ""}"></i>`).join("");
+  let body = "";
+  if (it.kind === "key" || it.kind === "seq") body = `<div class="big${it.jp ? " jp" : ""}">${esc(it.show)}</div>${it.kind === "seq" ? `<div class="typed" id="typed"></div>` : ""}`;
+  if (it.kind === "ime") body = `<div class="big jp">${esc(it.show)}</div><input class="imebox" id="imebox" autocomplete="off" aria-label="ここに入力">`;
+  if (it.kind === "quiz") body = `<div class="big jp" style="font-size:22px">${esc(it.show)}</div><div class="choices">${it.choices.map((c, i) => `<button class="choice" data-i="${i}">${esc(c)}</button>`).join("")}</div>`;
+  if (it.kind === "click" || it.kind === "drag") body = `<div class="big jp">${esc(it.show)}</div>`;
+  if (it.kind === "scroll") body = `<div class="big jp">${esc(it.show)}</div>`;
+  const arena = it.kind === "click" || it.kind === "drag" ? `<div class="arena" id="arena"></div>` :
+    it.kind === "scroll" ? `<div class="scroller" id="scroller" tabindex="0" aria-label="スクロール練習"><div class="zone"></div><div class="lane"><div class="flag" id="flag">旗</div></div></div>` : "";
+  VIEW.innerHTML = `<div class="session">
+    <div class="row"><span class="layerchip">${esc(g.skill.title)} ${session.si + 1}/${session.queue.length}</span><div class="progress" aria-hidden="true">${dots}</div>
+      <span style="margin-left:auto" class="row"><button class="ghost" id="skip">わからない（答えを見る）</button><button class="ghost" id="quit">やめる</button></span></div>
+    <div class="prompt" id="prompt"><div class="what">${esc(it.what)}</div>${body}<div class="hint" id="hint"></div><div class="warn" id="warn"></div></div>
+    ${arena}
+    <div class="board hidden-hint" id="board">${keyboard(it.layer, {}, false)}</div>
+    <div class="legend"><span><i class="sw" style="border-color:var(--target);background:var(--target-soft)"></i>押すキー</span><span><i class="sw" style="border-color:var(--accent);background:var(--accent-soft)"></i>押さえておくキー</span><span><i class="sw" style="border-color:var(--shift);background:var(--shift-soft)"></i>Shift</span></div>
+  </div>`;
+  document.getElementById("skip").onclick = () => { revealHint(); session.miss = true; setTimeout(() => finishItem(true), it.kind === "quiz" ? 1500 : 1200); };
+  document.getElementById("quit").onclick = showToday;
+  clearTimeout(session.hintTimer);
+  session.hintTimer = setTimeout(revealHint, it.kind === "quiz" ? 999999 : 4000);
+  if (it.kind === "seq") drawTyped();
+  if (it.kind === "ime") setupIme(it);
+  if (it.kind === "quiz") setupQuiz(it);
+  if (it.kind === "click") setupClick(it);
+  if (it.kind === "drag") setupDrag(it);
+  if (it.kind === "scroll") setupScroll(it);
+}
+function revealHint() {
+  if (!session || !session.cur) return;
+  const it = session.cur, b = document.getElementById("board"), h = document.getElementById("hint");
+  if (it.kind === "quiz") { markQuiz(it, null); return; }
+  if (b) { b.innerHTML = keyboard(it.layer, it.marks, it.ballTarget); b.classList.remove("hidden-hint"); }
+  if (h) h.textContent = it.hint;
+}
+function flash(cls) { const p = document.getElementById("prompt"); if (!p) return; p.classList.remove("good", "bad"); void p.offsetWidth; p.classList.add(cls); setTimeout(() => p.classList.remove(cls), 300); }
+function drawTyped() { const it = session.cur, el = document.getElementById("typed"); if (el) el.innerHTML = `<b>${esc(it.seq.slice(0, it.pos))}</b>${esc(it.seq.slice(it.pos).replace(/./g, "・"))}`; }
+
+function onKey(e) {
+  if (!session || !session.cur) return;
+  const it = session.cur;
+  if (/^F(1[3-9]|2[0-4])$/.test(e.key)) { e.preventDefault(); return; }        /* キーボードからのレイヤー通知は無視 */
+  if (it.kind === "ime" || it.kind === "quiz" || it.kind === "scroll") return;
+  if (it.kind === "click" || it.kind === "drag") return;
+  const warn = document.getElementById("warn");
+  if (e.key === "Process" || e.isComposing || e.keyCode === 229) {
+    if (warn) warn.textContent = `日本語入力がオンです。${keyName(P.shift)} を1回押して英字にしてください`;
+    e.preventDefault(); return;
+  }
+  if (["Shift", "Control", "Alt", "Meta", "CapsLock", "KanaMode", "Alphanumeric", "NonConvert", "Convert", "Hiragana", "Katakana", "HiraganaKatakana", "Zenkaku", "Hankaku", "ZenkakuHankaku", "Eisu", "KanjiMode", "Lang1", "Lang2", "Unidentified"].includes(e.key)) return;
+  e.preventDefault();
+  if (warn) warn.textContent = "";
+  const r = it.check(e);
+  if (r === "ok") { flash("good"); finishItem(false); }
+  else if (r === "progress") { drawTyped(); revealIfSlow(); }
+  else if (r === "bad") { session.miss = true; flash("bad"); revealHint(); }
+}
+function revealIfSlow() { const it = session.cur; if (session.hintShown) revealHint(); }
+
+function finishItem(skipped) {
+  if (!session) return;
+  clearTimeout(session.hintTimer);
+  const g = curGroup(), it = session.cur;
+  const ms = performance.now() - session.t0, miss = session.miss || skipped;
+  const fast = it.kind === "key" ? 2500 : it.kind === "seq" ? 3500 : 6000;
+  const val = skipped ? 0 : miss ? 0.4 : ms < fast ? 1 : ms < fast * 2 ? 0.8 : 0.6;
+  g.results.push({ miss, val });
+  const is = ST.items[it.id] || (ST.items[it.id] = { miss: 0, slow: 0, n: 0 });
+  is.n++; is.miss = Math.max(0, is.miss * 0.7 + (miss ? 1 : 0)); is.slow = ms > fast ? Math.min(3, (is.slow || 0) + 0.5) : Math.max(0, (is.slow || 0) - 0.5);
+  session.cur = null;
+  setTimeout(() => {
+    if (!session) return;
+    session.ii++;
+    if (session.ii >= g.items.length) return finishGroup();
+    renderItem();
+  }, skipped ? 0 : 250);
+}
+function finishGroup() {
+  const g = curGroup(), ss = skillState(g.skill.id);
+  const avg = g.results.reduce((a, r) => a + r.val, 0) / g.results.length;
+  ss.score = ss.runs ? Math.round(ss.score * 0.6 + avg * 100 * 0.4) : Math.round(avg * 100);
+  ss.runs++;
+  ss.interval = avg >= 0.8 ? Math.min(30, Math.max(1, ss.interval * 2)) : 1;
+  ss.due = addDays(today(), ss.interval);
+  if (!ST.days.includes(today())) ST.days.push(today());
+  save(); refreshStreak();
+  session.si++; session.ii = 0;
+  if (session.si < session.queue.length) return renderItem();
+  const groups = session.queue;
+  stopSession();
+  VIEW.innerHTML = `<div class="card"><h2>おつかれさまでした</h2>
+    <div class="plan">${groups.map(g => { const ss = skillState(g.skill.id); const ok = g.results.filter(r => !r.miss).length;
+      return `<div class="plan-row"><span style="flex:1">${esc(g.skill.title)} <span class="muted small">— ${ok}/${g.results.length} 一発で正解 ・ 次は ${ss.due.slice(5).replace("-", "/")}</span></span>${meterHTML(ss.score)}</div>`; }).join("")}</div>
+    <div class="row"><button class="primary" id="again">もう1セット</button><button class="ghost" id="home">今日の練習へ</button></div></div>`;
+  document.getElementById("again").onclick = () => startSession(groups.map(g => g.skill.id));
+  document.getElementById("home").onclick = showToday;
+}
+
+/* ---- IME ---- */
+function setupIme(it) {
+  const box = document.getElementById("imebox");
+  box.focus();
+  const test = () => { if (session && session.cur === it && it.check(box.value) === "ok") { flash("good"); finishItem(false); } };
+  box.addEventListener("input", test);
+  box.addEventListener("compositionend", () => setTimeout(test, 0));
+  box.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); test(); } });
+}
+/* ---- クイズ ---- */
+function setupQuiz(it) {
+  VIEW.querySelectorAll(".choice").forEach(b => b.onclick = () => {
+    if (!session || session.cur !== it) return;
+    const right = it.choices[+b.dataset.i] === it.answer;
+    if (!right) session.miss = true;
+    markQuiz(it, +b.dataset.i);
+    setTimeout(() => finishItem(false), right ? 600 : 1600);
+  });
+}
+function markQuiz(it, chosen) {
+  VIEW.querySelectorAll(".choice").forEach(b => { const i = +b.dataset.i;
+    if (it.choices[i] === it.answer) b.classList.add("right"); else if (i === chosen) b.classList.add("wrong"); });
+}
+/* ---- クリック ---- */
+function setupClick(it) {
+  const a = document.getElementById("arena"), r = a.getBoundingClientRect();
+  const size = it.size || 46;
+  const d = document.createElement("div");
+  d.className = "dot " + it.btn; d.style.width = d.style.height = size + "px";
+  d.style.left = (20 + Math.random() * Math.max(10, r.width - size - 40)) + "px";
+  d.style.top = (20 + Math.random() * Math.max(10, r.height - size - 40)) + "px";
+  d.textContent = size >= 30 ? { l: "左", m: "中", r: "右" }[it.btn] : "";
+  a.appendChild(d);
+  a.addEventListener("mousedown", e => {
+    if (!session || session.cur !== it) return;
+    if (e.button === 1) e.preventDefault();
+    const hit = e.target === d;
+    if (hit && e.button === it.code) { flash("good"); finishItem(false); }
+    else { session.miss = true; flash("bad"); revealHint(); }
+  });
+  a.addEventListener("auxclick", e => e.preventDefault());
+}
+/* ---- ドラッグ ---- */
+function setupDrag(it) {
+  const a = document.getElementById("arena"), r = a.getBoundingClientRect();
+  const slot = document.createElement("div"); slot.className = "slot";
+  const blk = document.createElement("div"); blk.className = "block"; blk.textContent = "四角";
+  const sx = r.width * (0.55 + Math.random() * 0.3), sy = 40 + Math.random() * (r.height - 140);
+  slot.style.left = sx + "px"; slot.style.top = sy + "px";
+  blk.style.left = (20 + Math.random() * r.width * 0.25) + "px"; blk.style.top = (40 + Math.random() * (r.height - 120)) + "px";
+  a.append(slot, blk);
+  let drag = null;
+  blk.addEventListener("pointerdown", e => { if (e.button !== 0) return; drag = { dx: e.clientX - blk.offsetLeft, dy: e.clientY - blk.offsetTop }; blk.setPointerCapture(e.pointerId); });
+  blk.addEventListener("pointermove", e => { if (!drag) return; blk.style.left = (e.clientX - drag.dx) + "px"; blk.style.top = (e.clientY - drag.dy) + "px"; });
+  blk.addEventListener("pointerup", () => {
+    if (!drag) return; drag = null;
+    const b = blk.getBoundingClientRect(), s = slot.getBoundingClientRect();
+    const cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+    if (cx > s.left && cx < s.right && cy > s.top && cy < s.bottom) { if (session && session.cur === it) { flash("good"); finishItem(false); } }
+  });
+}
+/* ---- スクロール ---- */
+function setupScroll(it) {
+  const sc = document.getElementById("scroller"), flag = document.getElementById("flag");
+  const down = Math.random() < 0.6 || sc.scrollTop === 0;
+  sc.scrollTop = down ? 0 : 2700;
+  flag.style.top = (down ? 900 + Math.random() * 1500 : 200 + Math.random() * 1200) + "px";
+  const zoneTop = 120, zoneH = 60;
+  let done = false;
+  sc.addEventListener("scroll", () => {
+    if (done || !session || session.cur !== it) return;
+    const y = flag.offsetTop - sc.scrollTop;
+    if (y >= zoneTop - 6 && y + flag.offsetHeight <= zoneTop + zoneH + 6) { done = true; setTimeout(() => { if (session && session.cur === it) { flash("good"); finishItem(false); } }, 350); }
+  });
+}
+
+/* ------------------------------------------------------------------ */
+document.querySelectorAll("nav.tabs button").forEach(b => b.onclick = () => { location.hash = b.dataset.view; route(); });
+function route() { const h = location.hash.replace("#", ""); if (h === "skills") showSkills(); else if (h === "howto") showHowto(); else showToday(); }
+window.addEventListener("hashchange", route);
+refreshStreak();
+route();
+</script>
+</body>
+</html>

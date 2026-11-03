@@ -1,16 +1,19 @@
 manifest:
   remotes:
     - name: zmkfirmware
-      url-base: https://github.com/petejohanson
+      url-base: https://github.com/zmkfirmware
     - name: kumamuk-git
       url-base: https://github.com/kumamuk-git
   projects:
+    # ZMK 最新安定リリース（v0.3）に固定。main は Zephyr 4.1 へ移行中の開発版で、
+    # トラックボールドライバが未追従のため使わない。v0.4 が出たら意図的に上げる。
     - name: zmk
       remote: zmkfirmware
-      revision: feat/pointers-move-scroll
+      revision: v0.3-branch
       import: app/west.yml
+    # PMW3610 トラックボールドライバ。main の最新コミットに固定（勝手に変わってビルドが壊れるのを防ぐ）
     - name: zmk-pmw3610-driver
       remote: kumamuk-git
-      revision: main
+      revision: 5e04553ab803d24405bd45621a41310ea3050e59
   self:
     path: config

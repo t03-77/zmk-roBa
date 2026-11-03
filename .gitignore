@@ -1,0 +1,8 @@
+# ビルド済みファーム（GitHub Actions が毎回作るので git には入れない）
+firmware/
+*.uf2
+
+# オーバーレイアプリが作るファイル
+tools/overlay/roba_overlay_settings.json
+tools/overlay/roba_overlay.log
+__pycache__/

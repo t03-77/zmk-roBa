@@ -2,4 +2,5 @@ on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build:
-    uses: zmkfirmware/zmk/.github/workflows/build-user-config.yml@main
+    # ZMK のビルド手順も west.yml と同じ v0.3 に固定する（main を参照すると突然壊れる）
+    uses: zmkfirmware/zmk/.github/workflows/build-user-config.yml@v0.3-branch

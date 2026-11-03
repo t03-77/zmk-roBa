@@ -1,0 +1,9 @@
+config ROBA_LAYER_SIGNAL
+    bool "Tap F13+<layer> to the host when the active layer changes (for the overlay app)"
+    default n
+    depends on !ZMK_SPLIT || ZMK_SPLIT_ROLE_CENTRAL
+
+config ROBA_LAYER_SIGNAL_DELAY_MS
+    int "Debounce before sending the layer signal (ms)"
+    default 10
+    depends on ROBA_LAYER_SIGNAL
